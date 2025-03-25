@@ -1,0 +1,3 @@
+bin/runner
+build/main.o
+test/runner

@@ -7,80 +7,103 @@
 #include <vector>
 #include <cmath>
 #include"processing.h"
+#include"randutils.hpp"
+
+static uint64_t seed = 328575958951598690;
+randutils::seed_seq_fe128 seeder{uint32_t(seed),uint32_t(seed >> 32)};
+std::mt19937 mt19937Engine(seeder);
+std::uniform_real_distribution<> rDist(0.0, 1.0);
 
 class isingLattice{
     private:
-        const int N, nSqrd;
-        // std::vector<int> lattice;
-        int* lattice;
-        double probArray[5]={0};
+        const int N, L, L2;
+        int *lattice; // lattice
+        int *nn, *nnn; // neighbours
         // std::uniform_real_distribution<> rDist(0.0, 1.0), latticeCoordDist(0, nSqrd);
-    public:
-        isingLattice(int N): N(N), nSqrd(N*N), lattice(new int[N*N]){
-            // lattice.resize(nSqrd);
+        std::uniform_int_distribution<> lDist;
+        void neighboutList(void){
+            for (int i = 0; i < N; ++i)
+            {
+                nn[6*i+0] = (mod(i,L)==0) ?  i+L-1 : i-1;
+                nn[6*i+1] = (mod(i+1,L)==0) ? i+1-L : i+1;
+                nn[6*i+2] = (mod(i,L2)<L) ? (i-mod(i,L2)) + L2 - (L-mod(i,L)) : i-L;
+                nn[6*i+3] = (mod(i,L2)>=L2-L) ? (i-mod(i,L2)) + mod(i,L) : i+L;
+                nn[6*i+4] = mod(i-L2,N);
+                nn[6*i+5] = mod(i+L2,N);
+            }
+            for (int i = 0; i < N; i++)
+            {
+                nnn[12*i+0] = nn[6*nn[6*i+0]+2];
+                nnn[12*i+1] = nn[6*nn[6*i+1]+2];
+                nnn[12*i+2] = nn[6*nn[6*i+0]+3];
+                nnn[12*i+3] = nn[6*nn[6*i+1]+3];
+                nnn[12*i+4] = nn[6*nn[6*i+0]+4];
+                nnn[12*i+5] = nn[6*nn[6*i+1]+4];
+                nnn[12*i+6] = nn[6*nn[6*i+0]+5];
+                nnn[12*i+7] = nn[6*nn[6*i+1]+5];
+                nnn[12*i+8] = nn[6*nn[6*i+3]+5];
+                nnn[12*i+9] = nn[6*nn[6*i+2]+5];
+                nnn[12*i+10] = nn[6*nn[6*i+2]+4];
+                nnn[12*i+11] = nn[6*nn[6*i+3]+4];
+            }
         };
+    public:
+        isingLattice(int L): L(L), L2(L*L), N(L*L*L){
+            lDist = std::uniform_int_distribution<>(0, N-1);
+            lattice = new int[L*L*L];
+            nn = new int[6*L*L*L];
+            nnn = new int[12*L*L*L];    
+            neighboutList();  
+        };
+
         void initialise(double m0){
-            for(size_t i=0; i<nSqrd; ++i)
+            for(size_t i=0; i<N; ++i)
                 lattice[i] = (rDist(mt19937Engine) < (1+m0)/2.0)? 1 : -1;
         }
-        void boltz2dMetro(double b){
-            for (int i = 2; i < 5; i+=2) probArray[i] = exp(-2*b*i);
-        };
-        void boltz2dGlauber(double b, double h=0){
-            for (int i = 0; i < 5; ++i) probArray[i] = 1/(1+exp(-2.0*b*((i*2.0)-4.0+h)));
-        };
-        void metropolis2DimSweep(double);
-        void metropolis1DimSweep(double);
-        void metropolis1DimSweep(double, double);
+        void metropolis3DimSweep(double, double);
         void printLattice(std::ostream &data);
-        void glauber1DimSweep(double, double);
-        void glauber1dInterval(double,int);
-        void glauber1dIntervalTyp(double,int, int);
-        void glauber2DimSweep(double, double);
-        void kawasaki1DimSweep(double, double);
         double magnetisation(void) const;
-        double energy1D(double) const;
-        double energy2D(double) const;
-        double siteEnergy2D(int, int, double) const;
+        double energy3D(double) const;
+        double siteEnergy3D(int, double) const;
         void writeConfig(std::ostream &data) const;
+        void flipSeriesOfSites(int, int);
         ~isingLattice() {
-            // lattice.clear();
             delete[] lattice;
+            delete[] nn;
+            delete[] nnn;
         };
 };
 
 void isingLattice::writeConfig(std::ostream &data) const{
-    for (int i = 0; i < nSqrd; ++i)
-        data << lattice[i];
-    data <<"\n";
-    // data << std::endl;
-}
-
-double isingLattice::energy1D (double h=0.0) const{
-    double e = 0;
-    for (int i = 0; i < nSqrd; ++i)
-        // e += lattice[i]*(lattice[((i==0)?nSqrd-1:i-1)]+lattice[((i==nSqrd-1)?0:i+1)]);
-        e += lattice[i]*(lattice[mod(i-1,nSqrd)] + lattice[mod(i+1,nSqrd)]);
-    return -e/((double) 2.0*nSqrd);
-}
-
-double isingLattice::energy2D(double h=0.0) const{
-    double e = 0.0;
-    for(int x=0; x<N; ++x){
-        for (int y = 0; y < N; y++)
-            e = siteEnergy2D(x,y,h);
+    for (int i = 0; i < L; i++)
+    {
+        for (int j = 0; j < L; j++)
+        {
+            for (int k = 0; k < L; k++)
+            {
+                data << lattice[i*L2 + j*L + k] << " ";
+            }
+            data << std::endl;
+        }
+        data << std::endl;
     }
-    return e/((double) 2.0*nSqrd);
+}
+
+double isingLattice::energy3D(double k=0.0) const{
+    double e = 0.0;
+    for(int x=0; x< N; ++x)
+        e += siteEnergy3D(x,k);
+    return -e/((double) 2.0*N);
 }
 
 double isingLattice::magnetisation(void) const{
     double m=0.0;
-    for (int i = 0; i < nSqrd; ++i) m += lattice[i];
-    return m/nSqrd;
+    for (int i = 0; i < N; ++i) m += lattice[i];
+    return m/N;
 }
 
 void isingLattice::printLattice(std::ostream &data){
-    for(size_t i=0; i<nSqrd; ++i){
+    for(size_t i=0; i<N; ++i){
         switch (lattice[i]){
             case 1:
                 data.write("1", 1);
@@ -96,126 +119,66 @@ void isingLattice::printLattice(std::ostream &data){
     data.write("\n", 1);
 }
 
-// multiplies with a -1
-double isingLattice::siteEnergy2D(int x, int y, double h=0.0) const{
+double isingLattice::siteEnergy3D(int x, double k) const{
     double energy = 0.0;
-    // a = lattice[N*y+((x==0)?N-1:x-1)];
-    // b = lattice[N*y+((x==N-1)?0:x+1)];
-    // c = lattice[N*((y==0)?N-1:y-1)+x];
-    // d = lattice[N*((y==N-1)?0:y+1)+x];
-    // ide = lattice[N*y+x]*(a+b+c+d);
-    energy += lattice[mod(y,N)*N +   mod(x+1,N)];
-    energy += lattice[mod(y+1,N)*N + mod(x,N)];
-    energy += lattice[mod(y,N)*N +   mod(x-1,N)];
-    energy += lattice[mod(y-1,N)*N + mod(x,N)];
-    energy = (energy + h)*(-lattice[N*y+x]);
-    return energy;
+    energy = -2.0*k*(lattice[nn[6*x+0]] +lattice[nn[6*x+1]] +lattice[nn[6*x+2]] 
+                    + lattice[nn[6*x+3]] +lattice[nn[6*x+4]] +lattice[nn[6*x+5]]);
+    energy += k/2.0*(lattice[nnn[12*x+0]] + lattice[nnn[12*x+1]] + lattice[nnn[12*x+2]] + lattice[nnn[12*x+3]]
+                    + lattice[nnn[12*x+4]] + lattice[nnn[12*x+5]] + lattice[nnn[12*x+6]] + lattice[nnn[12*x+7]]
+                    + lattice[nnn[12*x+8]] + lattice[nnn[12*x+9]] + lattice[nnn[12*x+10]] + lattice[nnn[12*x+11]]);
+    energy += -(1.0-k)/2.0*(lattice[nn[6*x+0]]*lattice[nn[6*x+2]]*lattice[nnn[12*x+0]]
+                        + lattice[nn[6*x+1]]*lattice[nn[6*x+2]]*lattice[nnn[12*x+1]]
+                        + lattice[nn[6*x+0]]*lattice[nn[6*x+3]]*lattice[nnn[12*x+2]]
+                        + lattice[nn[6*x+1]]*lattice[nn[6*x+3]]*lattice[nnn[12*x+3]]
+                        + lattice[nn[6*x+0]]*lattice[nn[6*x+4]]*lattice[nnn[12*x+4]]
+                        + lattice[nn[6*x+1]]*lattice[nn[6*x+4]]*lattice[nnn[12*x+5]]
+                        + lattice[nn[6*x+0]]*lattice[nn[6*x+5]]*lattice[nnn[12*x+6]]
+                        + lattice[nn[6*x+1]]*lattice[nn[6*x+5]]*lattice[nnn[12*x+7]]
+                        + lattice[nn[6*x+4]]*lattice[nn[6*x+3]]*lattice[nnn[12*x+11]]
+                        + lattice[nn[6*x+2]]*lattice[nn[6*x+4]]*lattice[nnn[12*x+10]]
+                        + lattice[nn[6*x+3]]*lattice[nn[6*x+5]]*lattice[nnn[12*x+8]]
+                        + lattice[nn[6*x+2]]*lattice[nn[6*x+5]]*lattice[nnn[12*x+9]]);
+    return energy*lattice[x];
 }
 
-void isingLattice::metropolis2DimSweep(double beta){
-    int ide;
-    std::uniform_int_distribution<> lDist(0, nSqrd);
-    // to do use l dist
-    boltz2dMetro(beta);
-    for(int x=0; x<N; ++x){
-        for (int y = 0; y < N; y++){
-            ide = (int) -siteEnergy2D(x, y);
-            if (ide <=0 || rDist(mt19937Engine) < probArray[ide]){
-            // if(ide<=0 || rDist(mt19937Engine) <  exp(-2*beta*ide)){
-                lattice[N*y+x] = -lattice[N*y+x];
-            }
-        }
-    }
-}
-
-void isingLattice::metropolis1DimSweep(double beta){
-    int ide;
-
-    std::uniform_int_distribution<> lDist(0, nSqrd);
-    // to do use ldist
-    double boltz = exp(-4*beta);
-    for(int x=0; x<nSqrd; ++x){
-        ide = lattice[x]*(lattice[((x==0)?nSqrd-1:x-1)]+lattice[((x==nSqrd-1)?0:x+1)]);
-        if (ide <=0 || rDist(mt19937Engine) < boltz){
-            lattice[x] = -lattice[x];
-        }
-    }
-}
-
-void isingLattice::metropolis1DimSweep(double beta, double h){
+void isingLattice::metropolis3DimSweep(double beta, double k=0.0){
     double ide;
-
-    std::uniform_int_distribution<> lDist(0, nSqrd);
-    for(int x=0; x<nSqrd; ++x){
-        ide = lattice[x]*(lattice[((x==0)?nSqrd-1:x-1)]+lattice[((x==nSqrd-1)?0:x+1)] + h);
+    for(int i=0; i<N; ++i){
+        int x = lDist(mt19937Engine);
+        ide = -siteEnergy3D(x, k);
         if (ide <=0 || rDist(mt19937Engine) < exp(-2*beta*ide)){
             lattice[x] = -lattice[x];
         }
     }
 }
 
-void isingLattice::glauber1DimSweep(double beta, double h=0.0){
-    double ide;
-    std::uniform_int_distribution<> lDist(0, nSqrd);
-    for(int i=0; i<nSqrd; ++i){
-        int x = lDist(mt19937Engine);
-        // ide = lattice[x]*(lattice[((x==0)?nSqrd-1:x-1)]+lattice[((x==nSqrd-1)?0:x+1)] + h);
-        ide = lattice[x]*(lattice[mod(x-1,nSqrd)] + lattice[mod(x+1,nSqrd)]);
-        if (rDist(mt19937Engine) <= 1.0/(1.0+exp(2.0*ide*beta))){
-            lattice[x] = -lattice[x];
-        }
-    }
-}
-
-void isingLattice::glauber1dInterval(double beta, int end){
-    double ide; int count =0;
-    std::uniform_int_distribution<> lDist(0, nSqrd);
-    for(int i=0; i<end; ++i){
-        int x = lDist(mt19937Engine);
-        ide = lattice[x]*(lattice[mod(x-1,nSqrd)] + lattice[mod(x+1,nSqrd)]);
-        if (rDist(mt19937Engine) <= 1.0/(1.0+exp(2.0*ide*beta))){
-            lattice[x] = -lattice[x];
-        }
-    }
-}
-
-void isingLattice::glauber1dIntervalTyp(double beta, int start, int finish){
-    double ide; int count =0;
-    for(int x=start; x<finish; ++x){
-        ide = lattice[x]*(lattice[mod(x-1,nSqrd)] + lattice[mod(x+1,nSqrd)]);
-        if (rDist(mt19937Engine) <= 1.0/(1.0+exp(2.0*ide*beta))){
-            lattice[x] = -lattice[x];
-        }
-    }
-}
-
-
-void isingLattice::kawasaki1DimSweep(double beta, double h=0.0){
-    double ide, boltz = exp(-beta*4); int tmp, x, y;
-    std::uniform_int_distribution<> discr(0, nSqrd-1);
-    for(int i=0; i<nSqrd; ++i){
-        x = discr(mt19937Engine); y = mod(x+1,nSqrd);
-        if (lattice[x]==lattice[y]){continue;}
-        ide = lattice[x]*lattice[mod(x-1,nSqrd)] + lattice[y]*lattice[mod(y+1,nSqrd)];
-        if (rDist(mt19937Engine) <= 1.0/(1.0+exp(2.0*ide*beta))){
-        // if (ide<=0 || rDist(mt19937Engine) < boltz){
-            tmp = lattice[x];
-            lattice[x] = lattice[y];
-            lattice[y] = tmp;
-        }
-    }
-}
-
-void isingLattice::glauber2DimSweep(double beta, double h=0.0){
-    std::uniform_int_distribution<> lDist(0, nSqrd);
-    // to do use lDist and not typewriter
-    for(int x=0; x<N; ++x){
-        for(int y=0; y<N; ++y){
-            if (rDist(mt19937Engine) <= 1.0/(1.0+exp(-2.0*siteEnergy2D(x, y, h)*beta))){
-                lattice[N*y+x] = -lattice[N*y+x];
+void isingLattice::flipSeriesOfSites(int x, int d){
+    x = mod(x,L);
+    if (d==0){
+        x = x*L;
+        for (int i = 0; i < L; ++i){
+            for (int j = 0; j < L; j++)
+            {
+                lattice[x+j] = -lattice[x+j];
             }
+            x += L2;
+        }
+    } else {
+        x = x*L2;
+        for (int i = 0; i < L2; ++i){
+            lattice[x+i] = -lattice[x+i];
         }
     }
-}
 
+
+    // std::cout << "Next Nearest Neighbours: ";
+    // for(int i=0; i<12; i++){
+    //     lattice[nnn[12*x+i]] = -lattice[nnn[12*x+i]];
+    //     std::cout << nnn[12*x+i] << ", ";
+    // }
+    // std::cout << std::endl;
+
+    // lattice[x] = 10;
+
+}
 #endif

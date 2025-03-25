@@ -1,11 +1,30 @@
 
-#include <random>
-#include"randutils.hpp"
+#include <algorithm>
 
-static uint64_t seed = 328575958951598690;
-randutils::seed_seq_fe128 seeder{uint32_t(seed),uint32_t(seed >> 32)};
-std::mt19937 mt19937Engine(seeder);
-std::uniform_real_distribution<> rDist(0.0, 1.0);
+class InputParser{
+    public:
+        InputParser (int &argc, char **argv){
+            for (int i=1; i < argc; ++i)
+                this->tokens.push_back(std::string(argv[i]));
+        }
+        /// @author iain
+        const std::string& getCmdOption(const std::string &option) const{
+            std::vector<std::string>::const_iterator itr;
+            itr =  std::find(this->tokens.begin(), this->tokens.end(), option);
+            if (itr != this->tokens.end() && ++itr != this->tokens.end()){
+                return *itr;
+            }
+            static const std::string empty_string("");
+            return empty_string;
+        }
+        /// @author iain
+        bool cmdOptionExists(const std::string &option) const{
+            return std::find(this->tokens.begin(), this->tokens.end(), option)
+                   != this->tokens.end();
+        }
+    private:
+        std::vector <std::string> tokens;
+};
 
 inline int mod(int a, int b)
 {
@@ -31,9 +50,4 @@ template<typename T> double variance(const T& array){
         variance += diff * diff;
     }
     return variance/((double)array.size());
-}
-
-double sample_exponential(double lambda) {
-    double u = rDist(mt19937Engine);  // Generate a uniform random number
-    return -std::log(1 - u) / lambda;  // Inverse transform sampling
 }

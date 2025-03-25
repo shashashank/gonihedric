@@ -2,9 +2,7 @@ CC := g++ # This is the main compiler
 # CC := clang++ --analyze # and comment out the linker last line for sanity
 SRCDIR := src
 BUILDDIR := build
-TARGET1 := bin/runner1
-TARGET2 := bin/runner2
-TARGET3 := bin/runner3
+TARGET := bin/runner
  
 SRCEXT := cpp
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
@@ -14,25 +12,10 @@ LIB := -fopenmp #-pthread -lmongoclient -L lib -lboost_thread-mt -lboost_filesys
 INC := -I include
 
 # Separate main source files for each target
-MAIN1 := src/main1.cpp
-MAIN2 := src/main2.cpp
-MAIN3 := src/main3.cpp
-
-# Object files for each target
-# OBJS1 := $(filter-out $(BUILDDIR)/main2.o,$(OBJECTS)) $(filter-out $(BUILDDIR)/main3.o,$(OBJECTS))
-# OBJS2 := $(filter-out $(BUILDDIR)/main1.o,$(OBJECTS)) $(filter-out $(BUILDDIR)/main3.o,$(OBJECTS))
-# OBJS2 := $(filter-out $(BUILDDIR)/main1.o,$(OBJECTS)) $(filter-out $(BUILDDIR)/main2.o,$(OBJECTS))
+MAIN := src/main.cpp
 
 # Rules for each target
-$(TARGET1): $(OBJS1) $(BUILDDIR)/main1.o
-	@echo " Linking $@..."
-	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
-
-$(TARGET2): $(OBJS2) $(BUILDDIR)/main2.o
-	@echo " Linking $@..."
-	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
-
-$(TARGET3): $(OBJS3) $(BUILDDIR)/main3.o
+$(TARGET): $(OBJS) $(BUILDDIR)/main.o
 	@echo " Linking $@..."
 	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
 
