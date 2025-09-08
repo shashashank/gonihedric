@@ -2,27 +2,34 @@ CC := g++ # This is the main compiler
 # CC := clang++ --analyze # and comment out the linker last line for sanity
 SRCDIR := src
 BUILDDIR := build
-TARGET := bin/runner
- 
+TARGETPUD := bin/execPUD
+TARGETG2D := bin/execG2D
+
+
 SRCEXT := cpp
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.o))
-CFLAGS := -g -O2 -std=c++20 # -Wall
+CFLAGS := -g -O3 -std=c++20 -Wall
 LIB := -fopenmp #-pthread -lmongoclient -L lib -lboost_thread-mt -lboost_filesystem-mt -lboost_system-mt
 INC := -I include
 
 # Separate main source files for each target
-MAIN := src/main.cpp
+MAINPUD := src/mainPUD.cpp
+MAIN2 := src/main2.cpp
 
 # Rules for each target
-$(TARGET): $(OBJS) $(BUILDDIR)/main.o
+$(TARGETPUD): $(OBJS) $(BUILDDIR)/mainPUD.o
+	@echo " Linking $@..."
+	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
+
+$(TARGETG2D): $(OBJS) $(BUILDDIR)/mainG2D.o
 	@echo " Linking $@..."
 	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
 
 # Compile object files
 $(BUILDDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(BUILDDIR)
-	@echo " $(CC) $(CFLAGS) $(INC) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) -c -o $@ $<
+	@echo " $(CC) $(CFLAGS) $(INC) $(LIB) -c -o $@ $<"; $(CC) $(CFLAGS) $(INC) $(LIB) -c -o $@ $<
 
 clean:
 	@echo " Cleaning...";

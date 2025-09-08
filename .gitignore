@@ -1,3 +1,7 @@
-bin/runner
-build/main.o
-test/runner
+bin
+build
+test
+config
+data/*
+dataproc
+*.png

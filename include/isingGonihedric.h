@@ -9,18 +9,19 @@
 #include"processing.h"
 #include"randutils.hpp"
 
-static uint64_t seed = 328575958951598690;
-randutils::seed_seq_fe128 seeder{uint32_t(seed),uint32_t(seed >> 32)};
-std::mt19937 mt19937Engine(seeder);
-std::uniform_real_distribution<> rDist(0.0, 1.0);
+// static uint64_t seed = 328575958951598690;
+// randutils::seed_seq_fe128 seeder{uint32_t(seed),uint32_t(seed >> 32)};
+// std::mt19937 mt19937Engine(seeder);
+// std::uniform_real_distribution<> rDist(0.0, 1.0);
 
 class isingLattice{
     private:
         const int N, L, L2;
         int *lattice; // lattice
         int *nn, *nnn; // neighbours
-        // std::uniform_real_distribution<> rDist(0.0, 1.0), latticeCoordDist(0, nSqrd);
         std::uniform_int_distribution<> lDist;
+        std::uniform_real_distribution<> rDist;
+        std::mt19937 mt19937Engine;
         void neighboutList(void){
             for (int i = 0; i < N; ++i)
             {
@@ -48,16 +49,16 @@ class isingLattice{
             }
         };
     public:
-        isingLattice(int L): L(L), L2(L*L), N(L*L*L){
+        isingLattice(int l, std::mt19937 rng): L(l), L2(l*l), N(l*l*l), mt19937Engine(rng){
             lDist = std::uniform_int_distribution<>(0, N-1);
-            lattice = new int[L*L*L];
-            nn = new int[6*L*L*L];
-            nnn = new int[12*L*L*L];    
+            lattice = new int[N];
+            nn = new int[6*N];
+            nnn = new int[12*N];    
             neighboutList();  
         };
 
         void initialise(double m0){
-            for(size_t i=0; i<N; ++i)
+            for(int i=0; i<N; ++i)
                 lattice[i] = (rDist(mt19937Engine) < (1+m0)/2.0)? 1 : -1;
         }
         void metropolis3DimSweep(double, double);
@@ -103,7 +104,7 @@ double isingLattice::magnetisation(void) const{
 }
 
 void isingLattice::printLattice(std::ostream &data){
-    for(size_t i=0; i<N; ++i){
+    for(int i=0; i<N; ++i){
         switch (lattice[i]){
             case 1:
                 data.write("1", 1);
@@ -146,7 +147,7 @@ void isingLattice::metropolis3DimSweep(double beta, double k=0.0){
     for(int i=0; i<N; ++i){
         int x = lDist(mt19937Engine);
         ide = -siteEnergy3D(x, k);
-        if (ide <=0 || rDist(mt19937Engine) < exp(-2*beta*ide)){
+        if (ide <=0 || rDist(mt19937Engine) < exp(beta*ide)){
             lattice[x] = -lattice[x];
         }
     }
