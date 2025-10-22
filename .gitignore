@@ -3,5 +3,7 @@ build
 test
 config
 data/*
-dataproc
+dataproc/__pycache__/
+dataproc/data/
 *.png
+.vscode

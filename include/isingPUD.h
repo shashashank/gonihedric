@@ -16,7 +16,7 @@ class isingLattice2D{
         int *nn; // neighbours
         std::uniform_int_distribution<> lDist;
         std::uniform_real_distribution<> rDist;
-        std::mt19937 mt19937Engine;
+        std::mt19937 *mt19937Engine;
         void neighboutList(void){
             for (int i = 0; i < N; ++i)
             {
@@ -27,7 +27,7 @@ class isingLattice2D{
             }
         };
     public:
-        isingLattice2D(int l, std::mt19937 rng): L(l), N(l*l), mt19937Engine(rng){
+        isingLattice2D(int l, std::mt19937 *rng): L(l), N(l*l), mt19937Engine(rng){
             rDist = std::uniform_real_distribution<>(0.0, 1.0);
             lDist = std::uniform_int_distribution<>(0, N-1);
             lattice = new int[N];
@@ -37,7 +37,7 @@ class isingLattice2D{
 
         void initialise(double m0){
             for(int i=0; i<N; ++i)
-                lattice[i] = (rDist(mt19937Engine) < (1.0+m0)/2.0)? 1 : -1;
+                lattice[i] = (rDist(*mt19937Engine) < (1.0+m0)/2.0)? 1 : -1;
         }
         void metropolis2DimSweep(double, double);
         void metropolis2DimPUDSweep(double, double);
@@ -100,9 +100,9 @@ double isingLattice2D::siteEnergy2DPUD(int x, double J) const{
 void isingLattice2D::metropolis2DimSweep(double beta, double J){
     double deltaE;
     for(int i=0; i<N; ++i){
-        int x = lDist(mt19937Engine);
+        int x = lDist(*mt19937Engine);
         deltaE = -2.0*lattice[x]*siteEnergy2D(x, J);
-        if (deltaE <=0 || rDist(mt19937Engine) < exp(-beta*deltaE)){
+        if (deltaE <=0 || rDist(*mt19937Engine) < exp(-beta*deltaE)){
             lattice[x] = -lattice[x];
         }
     }
@@ -112,7 +112,7 @@ void isingLattice2D::metropolis2DimPUDSweep(double beta, double J){
     double deltaE;
     for(int i=0; i<N; ++i){
         deltaE = -2.0*lattice[i]*siteEnergy2DPUD(i, J);
-        if (deltaE <=0 || rDist(mt19937Engine) < exp(-beta*deltaE)){
+        if (deltaE <=0 || rDist(*mt19937Engine) < exp(-beta*deltaE)){
             lattice[i] = -lattice[i];
         }
     }
