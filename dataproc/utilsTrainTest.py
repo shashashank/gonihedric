@@ -20,7 +20,7 @@ class ReshapeTransform:
     def __call__(self, x):
         return x.view(*self.shape)
 
-def visualize_reconstruction(model, device, data_loader, side, location):
+def visualize_reconstruction(model, device, data_loader, side, location, name:str="reconstruction"):
     model.eval()
     with torch.no_grad():
         images, _ = next(iter(data_loader))
@@ -39,7 +39,7 @@ def visualize_reconstruction(model, device, data_loader, side, location):
             axes[1,i].axis('off')
 
         plt.tight_layout()
-        plt.savefig(location+"/reconstruction.png")
+        plt.savefig(location+"/"+name+".png")
         plt.close()
 
 def visualize_dataset(dataDir:str, side:int):
@@ -77,11 +77,16 @@ def plotLosses(trainArr, testArr, epochs, minX, maxX, folder:str=None):
     plt.close()
 
 
-def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side, folder:str, number:int, num_epochs=10, saving=False):
+def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side, lam:float, folder:str, number:int, num_epochs=10, saving=False):
     # Create the folder
     folder_name = folder + '/' + str(number) +'/'
     os.makedirs(folder_name, exist_ok=True)
 
+    if lam > 0:
+        contractive_loss = lambda enc, imag : torch.norm(torch.autograd.functional.jacobian(enc, imag, create_graph=True))
+    else:
+        contractive_loss = lambda enc, imag : 0
+    
     trainLosses = np.empty(num_epochs); minTrainLoss = np.inf
     testLosses = np.empty(num_epochs); minTestLoss = np.inf
     for epoch in range(num_epochs):
@@ -94,7 +99,7 @@ def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, s
 
             # Forward pass
             outputs = model(images)
-            loss = criterion(outputs, images)
+            loss = criterion(outputs, images) + lam * contractive_loss(model.encoder, images)
 
             # Backward pass and optimize
             optimizer.zero_grad()
@@ -115,11 +120,11 @@ def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, s
             if testLosses[epoch] < minTestLoss:
                 minTestLoss = testLosses[epoch]
                 torch.save(model.state_dict(), folder_name+f"/best_model.pth")
-                visualize_reconstruction(model, device, testLoader, side, folder_name)
+                visualize_reconstruction(model, device, testLoader, side, folder_name, name="best_test")
             if trainLosses[epoch] < minTrainLoss:
                 minTrainLoss = trainLosses[epoch]
                 torch.save(model.state_dict(), folder_name+f"/best_train_model.pth")
-                visualize_reconstruction(model, device, trainLoader, side, folder_name)
+                visualize_reconstruction(model, device, trainLoader, side, folder_name, name="best_train")
         if epoch % 10 == 0 and saving:
             torch.save(model.state_dict(), folder_name+f"/model_epoch_{epoch}.pth")
     np.save(folder_name + "trainLosses.npy", trainLosses)

@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torchDatasets as ds
 import networks as custNN
@@ -32,7 +33,7 @@ class ConvAutoencoder(nn.Module):
 
         # ----- Encoder -----
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1, padding_mode='circular'),  # -> (32, H/2, W/2)
+            nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1, padding_mode='zeros'),  # -> (32, H/2, W/2)
             nn.BatchNorm2d(32),
             nn.ReLU(True),
 
@@ -82,7 +83,6 @@ class ConvAutoencoder(nn.Module):
         x = self.decoder(x)
         return x
 
-
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -90,24 +90,19 @@ seed = 483482923932993232
 utt.manualSeed(seed)
 
 side = 28
-batchSize =128# 256#  64# 
-criterion = nn.MSELoss()# nn.BCELoss()#
+batchSize =128# 256#  64#
+criterion = nn.BCELoss()# nn.MSELoss()#
 # model = custNN.Autoencoder([900, 750, 600, 450, 300, 150, 75, 30, 10, 2], nn.Tanh(), nn.Tanh())
-model = custNN.Autoencoder([784, 600, 450, 300, 150, 75, 30, 10, 2], nn.Tanh(), nn.Tanh())
+model = custNN.Autoencoder([784, 200, 50, 10], nn.ReLU(), nn.Sigmoid(), F.sigmoid)
 # model = ConvAutoencoder(10, dropout=0.2)
 custNN.initialize_weights(model); model.to(device)
 
-# transform = transform = v2.Compose([v2.RandomHorizontalFlip(),
-#                                     v2.RandomVerticalFlip(),
-#                                     ReshapeTransform(([side*side])),
-#                                     v2.Lambda(lambda x: 2*x - 1)])# None
-
 # Define transforms
 transform = v2.Compose([
-    v2.ToImage(), 
+    v2.ToImage(),
     v2.ToDtype(torch.float32, scale=True),
     utt.ReshapeTransform(([side*side])),
-    v2.Lambda(lambda x: 2*x - 1),
+    # v2.Lambda(lambda x: 2*x - 1),
     # v2.Lambda(lambda x: torch.flatten(x, start_dim=1)),  # Flatten the image
 ])
 
@@ -125,9 +120,9 @@ test_dataset = datasets.MNIST(
 )
 
 # _, smallTrainset = torch.utils.data.random_split(train_dataset, [43000, 17000])
-_, trainset, smallTrainset = torch.utils.data.random_split(train_dataset, [58600, 1000, 400])
-trainLoader = torch.utils.data.DataLoader(trainset, batch_size=batchSize, shuffle=True, num_workers=4)
-smallTrainLoader = torch.utils.data.DataLoader(smallTrainset, batch_size=batchSize, shuffle=True, num_workers=4)
+# _, trainset, smallTrainset = torch.utils.data.random_split(train_dataset, [58600, 1000, 400])
+trainLoader = torch.utils.data.DataLoader(train_dataset, batch_size=batchSize, shuffle=True, num_workers=4)
+# smallTrainLoader = torch.utils.data.DataLoader(smallTrainset, batch_size=batchSize, shuffle=True, num_workers=4)
 # tinyLoader = torch.utils.data.DataLoader(tinyset, batch_size=batchSize, shuffle=True, num_workers=4)
 testLoader = torch.utils.data.DataLoader(test_dataset, batch_size=batchSize, shuffle=False)
 
@@ -138,19 +133,19 @@ folder_name = data_dir+"checkpoints/Autoencoder/"+now.strftime("%Y-%m-%d_%H-%M-%
 os.makedirs(folder_name+'/', exist_ok=True)
 
 source_path = Path(__file__).resolve()
- 
+
 # Copy File
 shutil.copy(source_path, folder_name+'/'+source_path.name)
-#, weight_decay=1e-3
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-4); epochs = 1500
-utt.trainAndTest(model, device, smallTrainLoader, testLoader, criterion, optimizer, side,
-             folder=folder_name, number=1 ,num_epochs=epochs, saving=False)
+wd=1e-4; lam=1e-4
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=wd); epochs = 50
+utt.trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side,
+                 lam=lam, folder=folder_name, number=1 ,num_epochs=epochs, saving=False)
 torch.save(model.state_dict(), folder_name+"/modelFirst.pth")
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-4); epochs = 4000
-utt.trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side,
-                 folder=folder_name, number=2 , num_epochs=epochs, saving=False)
-torch.save(model.state_dict(), folder_name+"/modelSecond.pth")
-optimizer = torch.optim.Adam(model.parameters(), lr=5e-5); epochs = 2000
-utt.trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side,
-                 folder=folder_name, number=3, num_epochs=epochs, saving=False)
-torch.save(model.state_dict(), folder_name+"/modelFinal.pth")
+# optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=wd); epochs = 40
+# utt.trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side,
+#                  lam=lam, folder=folder_name, number=2 , num_epochs=epochs, saving=False)
+# torch.save(model.state_dict(), folder_name+"/modelSecond.pth")
+# optimizer = torch.optim.Adam(model.parameters(), lr=5e-5, weight_decay=wd); epochs = 20
+# utt.trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side,
+#                  lam=lam, folder=folder_name, number=3, num_epochs=epochs, saving=False)
+# torch.save(model.state_dict(), folder_name+"/modelFinal.pth")

@@ -97,9 +97,9 @@ class PreActBottleneck(T.nn.Module):
 
 
 class PreActResNet(T.nn.Module):
-    def __init__(self, 
-                block, 
-                num_blocks, 
+    def __init__(self,
+                block,
+                num_blocks,
                 num_classes=1,
                 zero_init_residual: bool = False,
                 replace_stride_with_dilation:Optional[List[bool]] = None,
@@ -132,7 +132,7 @@ class PreActResNet(T.nn.Module):
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = T.nn.AdaptiveAvgPool2d((1, 1))
         self.fc = T.nn.Linear(512*block.expansion, num_classes)
-        
+
         for m in self.modules():
             if isinstance(m, T.nn.Conv2d):
                 T.nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -180,9 +180,9 @@ class PreActResNet(T.nn.Module):
         return out
 
 class PreActResNetSmall(T.nn.Module):
-    def __init__(self, 
-                block, 
-                num_blocks, 
+    def __init__(self,
+                block,
+                num_blocks,
                 num_classes=1,
                 zero_init_residual: bool = False,
                 replace_stride_with_dilation:Optional[List[bool]] = None,
@@ -215,7 +215,7 @@ class PreActResNetSmall(T.nn.Module):
         self.layer4 = self._make_layer(block, 32, num_blocks[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = T.nn.AdaptiveAvgPool2d((1, 1))
         self.linear = T.nn.Linear(32*block.expansion, num_classes)
-        
+
         for m in self.modules():
             if isinstance(m, T.nn.Conv2d):
                 T.nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -261,11 +261,11 @@ class PreActResNetSmall(T.nn.Module):
         out = T.flatten(out, 1)
         out = self.linear(out)
         return out
-    
+
 class PreActResNet3B(T.nn.Module):
-    def __init__(self, 
-                block, 
-                num_blocks, 
+    def __init__(self,
+                block,
+                num_blocks,
                 num_classes=1,
                 zero_init_residual: bool = False,
                 replace_stride_with_dilation:Optional[List[bool]] = None,
@@ -298,7 +298,7 @@ class PreActResNet3B(T.nn.Module):
         # self.layer4 = self._make_layer(block, 32, num_blocks[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = T.nn.AdaptiveAvgPool2d((1, 1))
         self.linear = T.nn.Linear(16*block.expansion, num_classes)
-        
+
         for m in self.modules():
             if isinstance(m, T.nn.Conv2d):
                 T.nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -344,15 +344,15 @@ class PreActResNet3B(T.nn.Module):
         out = T.flatten(out, 1)
         out = self.linear(out)
         return out
-    
+
 class PreActResNetSmallest(T.nn.Module):
-    def __init__(self, 
-                block, 
-                num_blocks, 
+    def __init__(self,
+                block,
+                num_blocks,
                 num_classes=1,
                 zero_init_residual: bool = False,
                 replace_stride_with_dilation:Optional[List[bool]] = None,
-                norm_layer: Optional[Callable[..., T.nn.Module]] = None,         
+                norm_layer: Optional[Callable[..., T.nn.Module]] = None,
         ) -> None:
         super(PreActResNetSmallest, self).__init__()
         if norm_layer is None:
@@ -381,7 +381,7 @@ class PreActResNetSmallest(T.nn.Module):
         self.layer4 = self._make_layer(block, 8, num_blocks[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = T.nn.AdaptiveAvgPool2d((1, 1))
         self.linear = T.nn.Linear(8*block.expansion, num_classes)
-        
+
         for m in self.modules():
             if isinstance(m, T.nn.Conv2d):
                 T.nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -427,15 +427,15 @@ class PreActResNetSmallest(T.nn.Module):
         out = T.flatten(out, 1)
         out = self.linear(out)
         return out
-    
+
 class PreActResNetSmallOld(T.nn.Module):
-    def __init__(self, 
-                block, 
-                num_blocks, 
+    def __init__(self,
+                block,
+                num_blocks,
                 num_classes=1,
                 zero_init_residual: bool = False,
                 replace_stride_with_dilation:Optional[List[bool]] = None,
-                norm_layer: Optional[Callable[..., T.nn.Module]] = None,         
+                norm_layer: Optional[Callable[..., T.nn.Module]] = None,
         ) -> None:
         super(PreActResNetSmallOld, self).__init__()
         if norm_layer is None:
@@ -464,7 +464,7 @@ class PreActResNetSmallOld(T.nn.Module):
         self.layer4 = self._make_layer(block, 32, num_blocks[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = T.nn.AdaptiveAvgPool2d((1, 1))
         self.linear = T.nn.Linear(32*block.expansion, num_classes)
-        
+
         for m in self.modules():
             if isinstance(m, T.nn.Conv2d):
                 T.nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -598,7 +598,7 @@ class PixelViT(T.nn.Module):#input_dim, num_classes,
 
         assert chw[1] % n_patches == 0, "Input shape not entirely divisible by number of patches"
         assert chw[2] % n_patches == 0, "Input shape not entirely divisible by number of patches"
-        self.patch_size = (chw[1] / n_patches, chw[2] / n_patches) 
+        self.patch_size = (chw[1] / n_patches, chw[2] / n_patches)
 
         # 1) Linear mapping
         self.input_d = int(chw[0] * self.patch_size[0] * self.patch_size[1])
@@ -638,7 +638,7 @@ class PixelViT(T.nn.Module):#input_dim, num_classes,
         for block in self.blocks:
             out = block(out)
 
-        # getting the classification token  
+        # getting the classification token
         out = out[:, 0]
 
         return self.ffn(out) # map to output dim, output category distribution
@@ -697,7 +697,7 @@ class ConvNet(T.nn.Module):
     return out
 
 class Autoencoder(T.nn.Module):
-    def __init__(self, layer_widths, internal_activaton=T.nn.ReLU(), output_activation=T.nn.Sigmoid()):
+    def __init__(self, layer_widths, internal_activation=T.nn.ReLU(), output_activation=T.nn.Sigmoid(), bottleneck_activation=T.nn.Identity()):
         """
         Parameters:
         - layer_widths (list of int): Widths of layers from input to bottleneck.
@@ -711,9 +711,10 @@ class Autoencoder(T.nn.Module):
         encoder_layers = []
         for i in range(len(layer_widths) - 1):
             encoder_layers.append(T.nn.Linear(layer_widths[i], layer_widths[i + 1]))
-            encoder_layers.append(internal_activaton)
+            encoder_layers.append(internal_activation)
         encoder_layers.pop()  # Remove last ReLU (after bottleneck)
         self.encoder = T.nn.Sequential(*encoder_layers)
+        self.bottleneck_activation = bottleneck_activation
 
         # Decoder (mirror of encoder, excluding bottleneck as input)
         decoder_layers = []
@@ -721,7 +722,7 @@ class Autoencoder(T.nn.Module):
         for i in range(len(decoder_widths) - 1):
             decoder_layers.append(T.nn.Linear(decoder_widths[i], decoder_widths[i + 1]))
             if i < len(decoder_widths) - 2:
-                decoder_layers.append(internal_activaton)
+                decoder_layers.append(internal_activation)
             else:
                 if output_activation is not None:
                     decoder_layers.append(output_activation)
@@ -729,6 +730,7 @@ class Autoencoder(T.nn.Module):
 
     def forward(self, x):
         encoded = self.encoder(x)
+        encoded = self.bottleneck_activation(encoded)
         decoded = self.decoder(encoded)
         return decoded
 
@@ -808,7 +810,7 @@ def modelPicker(modelName:str, side:int, nTargets:int, data_dir:str):
 class ConvAutoencoder(T.nn.Module):
     def __init__(self, latent_dim=64):
         super(ConvAutoencoder, self).__init__()
-        
+
         # Encoder: Convolutional layers to extract features
         self.encoder = T.nn.Sequential(
             T.nn.Conv2d(1, 32, kernel_size=3, stride=2, padding=1),  # Output: 32 x 14 x 14
@@ -820,7 +822,7 @@ class ConvAutoencoder(T.nn.Module):
             T.nn.Flatten(),  # Flatten the output to (batch_size, 128*4*4)
             T.nn.Linear(128*4*4, latent_dim)  # Latent dimension
         )
-        
+
         # Decoder: Fully connected + Transposed convolutional layers
         self.decoder = T.nn.Sequential(
             T.nn.Linear(latent_dim, 128*4*4),  # Latent to expanded shape

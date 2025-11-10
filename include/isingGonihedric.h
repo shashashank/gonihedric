@@ -76,20 +76,21 @@ class isingLattice{
 };
 
 void isingLattice::writeConfig(std::ostream &data) const{
-    for (int i = 0; i < L; i++)
-    {
-        for (int j = 0; j < L; j++)
-        {
-            for (int k = 0; k < L; k++)
-            {
-                data << lattice[i*L2 + j*L + k] << " ";
-            }
-            data << std::endl;
+    for(int i=0; i<N; ++i){
+        switch (lattice[i]){
+            case 1:
+                data.write("1", 1);
+                break;
+            case -1:
+                data.write("0", 1);
+                break;
+            default:
+                std::cerr << "Error: lattice value not 1 or -1" << std::endl;
+                exit(0);
         }
-        data << std::endl;
     }
+    data.write("\n", 1);
 }
-
 double isingLattice::energy3D(double k=0.0) const{
     double e = 0.0;
     for(int x=0; x< N; ++x)

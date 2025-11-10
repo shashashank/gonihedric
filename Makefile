@@ -4,6 +4,7 @@ SRCDIR := src
 BUILDDIR := build
 TARGETPUD := bin/execPUD
 TARGETG2D := bin/execG2D
+TARGETG3D := bin/execG3D
 
 
 SRCEXT := cpp
@@ -13,16 +14,16 @@ CFLAGS := -g -O3 -std=c++20 -Wall
 LIB := -fopenmp #-pthread -lmongoclient -L lib -lboost_thread-mt -lboost_filesystem-mt -lboost_system-mt
 INC := -I include
 
-# Separate main source files for each target
-MAINPUD := src/mainPUD.cpp
-MAIN2 := src/main2.cpp
-
 # Rules for each target
 $(TARGETPUD): $(OBJS) $(BUILDDIR)/mainPUD.o
 	@echo " Linking $@..."
 	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
 
 $(TARGETG2D): $(OBJS) $(BUILDDIR)/mainG2D.o
+	@echo " Linking $@..."
+	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
+
+$(TARGETG3D): $(OBJS) $(BUILDDIR)/mainG3D.o
 	@echo " Linking $@..."
 	@echo " $(CC) $^ -o $@ $(LIB)"; $(CC) $^ -o $@ $(LIB)
 
