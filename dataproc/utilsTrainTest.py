@@ -120,11 +120,11 @@ def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, s
             if testLosses[epoch] < minTestLoss:
                 minTestLoss = testLosses[epoch]
                 torch.save(model.state_dict(), folder_name+f"/best_model.pth")
-                visualize_reconstruction(model, device, testLoader, side, folder_name, name="best_test")
+                # visualize_reconstruction(model, device, testLoader, side, folder_name, name="best_test")
             if trainLosses[epoch] < minTrainLoss:
                 minTrainLoss = trainLosses[epoch]
                 torch.save(model.state_dict(), folder_name+f"/best_train_model.pth")
-                visualize_reconstruction(model, device, trainLoader, side, folder_name, name="best_train")
+                # visualize_reconstruction(model, device, trainLoader, side, folder_name, name="best_train")
         if epoch % 10 == 0 and saving:
             torch.save(model.state_dict(), folder_name+f"/model_epoch_{epoch}.pth")
     np.save(folder_name + "trainLosses.npy", trainLosses)

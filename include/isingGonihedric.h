@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 #include"processing.h"
 #include"randutils.hpp"
 
@@ -19,16 +20,17 @@ class isingLattice{
         const int N, L, L2;
         int *lattice; // lattice
         int *nn, *nnn; // neighbours
+        std::vector<int> freeSites;
         std::uniform_int_distribution<> lDist;
         std::uniform_real_distribution<> rDist;
         std::mt19937 *mt19937Engine;
-        void neighboutList(void){
+        void genNeighbours(void){
             for (int i = 0; i < N; ++i)
             {
                 nn[6*i+0] = (mod(i,L)==0) ?  i+L-1 : i-1;
                 nn[6*i+1] = (mod(i+1,L)==0) ? i+1-L : i+1;
-                nn[6*i+2] = (mod(i,L2)<L) ? (i-mod(i,L2)) + L2 - (L-mod(i,L)) : i-L;
-                nn[6*i+3] = (mod(i,L2)>=L2-L) ? (i-mod(i,L2)) + mod(i,L) : i+L;
+                nn[6*i+2] = (mod(i,L2)<L)?(i-mod(i,L2))+L2-(L-mod(i,L)):i-L;
+                nn[6*i+3] = (mod(i,L2)>=L2-L)?(i-mod(i,L2))+mod(i,L):i+L;
                 nn[6*i+4] = mod(i-L2,N);
                 nn[6*i+5] = mod(i+L2,N);
             }
@@ -51,22 +53,34 @@ class isingLattice{
     public:
         isingLattice(int l, std::mt19937 *rng): N(l*l*l), L(l), L2(l*l), mt19937Engine(rng){
             lDist = std::uniform_int_distribution<>(0, N-1);
+            rDist = std::uniform_real_distribution<>(0.0, 1.0);
             lattice = new int[N];
             nn = new int[6*N];
             nnn = new int[12*N];
-            neighboutList();
+            genNeighbours();
         };
 
         void initialise(double m0){
             for(int i=0; i<N; ++i)
                 lattice[i] = (rDist(*mt19937Engine) < m0)? 1 : -1;
+            
+            freeSites.clear();
+            for (int idx = 0; idx < N; ++idx){
+                freeSites.push_back(idx);
+            // std::random_shuffle(freeSites.begin(), freeSites.end());
+            }
         }
+
+        void fixPlanesOfSites(int, int, int);
         void metropolis3DimSweep(double, double);
-        void printLattice(std::ostream &data);
+        void metropolis3DimSweepTyp(double, double);
+        void metropolis3DimStep(double, double, int);
+        void metropolis3DimZeroTempSweep(double);
         double magnetisation(void) const;
         double energy3D(double) const;
         double siteEnergy3D(int, double) const;
         void writeConfig(std::ostream &data) const;
+        void printConfig(std::ostream &data) const;
         void flipSeriesOfSites(int, int);
         ~isingLattice() {
             delete[] lattice;
@@ -74,6 +88,28 @@ class isingLattice{
             delete[] nnn;
         };
 };
+
+
+void isingLattice::fixPlanesOfSites(int i, int j, int k){
+    std::vector<int> fixedSites;
+    for (int x = 0; x < L; ++x){
+        for (int y = 0; y < L; ++y){
+            lattice[i*L2 + x*L + y] = 1;
+            lattice[x*L2 + j*L + y] = 1;
+            lattice[x*L2 + y*L + k] = 1;
+            fixedSites.push_back(i*L2 + x*L + y);
+            fixedSites.push_back(x*L2 + j*L + y);
+            fixedSites.push_back(x*L2 + y*L + k);
+        }
+    }
+    freeSites.clear();
+    for (int idx = 0; idx < N; ++idx){
+        if (std::find(fixedSites.begin(), fixedSites.end(), idx) == fixedSites.end()){
+            freeSites.push_back(idx);
+        }
+    }
+    lDist = std::uniform_int_distribution<>(0, freeSites.size()-1);
+}
 
 void isingLattice::writeConfig(std::ostream &data) const{
     for(int i=0; i<N; ++i){
@@ -91,11 +127,35 @@ void isingLattice::writeConfig(std::ostream &data) const{
     }
     data.write("\n", 1);
 }
+
+void isingLattice::printConfig(std::ostream &data) const{
+    for(int i=0; i<L; ++i){
+        for(int j=0; j<L; ++j){
+            for(int k=0; k<L; ++k){
+                switch (lattice[i*L2 + j*L + k]){
+                    case 1:
+                        data.write("1", 1);
+                        break;
+                    case -1:
+                        data.write("0", 1);
+                        break;
+                    default:
+                        std::cerr << "Error: lattice value not 1 or -1" << std::endl;
+                        exit(0);
+                }
+            }
+            data.write(" ", 1);
+        }
+        data.write("\n", 1);
+    }
+    data.write("\n", 1);
+}
+
 double isingLattice::energy3D(double k=0.0) const{
     double e = 0.0;
     for(int x=0; x< N; ++x)
         e += siteEnergy3D(x,k);
-    return -e/((double) 2.0*N);
+    return e/((double) 4 * N);
 }
 
 double isingLattice::magnetisation(void) const{
@@ -104,25 +164,8 @@ double isingLattice::magnetisation(void) const{
     return m/N;
 }
 
-void isingLattice::printLattice(std::ostream &data){
-    for(int i=0; i<N; ++i){
-        switch (lattice[i]){
-            case 1:
-                data.write("1", 1);
-                break;
-            case -1:
-                data.write("0", 1);
-                break;
-            default:
-                std::cerr << "Error: lattice value not 1 or -1" << std::endl;
-                exit(0);
-        }
-    }
-    data.write("\n", 1);
-}
-
 double isingLattice::siteEnergy3D(int x, double k) const{
-    double energy = 0.0;
+    double energy;
     energy = -2.0*k*(lattice[nn[6*x+0]] +lattice[nn[6*x+1]] +lattice[nn[6*x+2]] 
                     + lattice[nn[6*x+3]] +lattice[nn[6*x+4]] +lattice[nn[6*x+5]]);
     energy += k/2.0*(lattice[nnn[12*x+0]] + lattice[nnn[12*x+1]] + lattice[nnn[12*x+2]] + lattice[nnn[12*x+3]]
@@ -146,11 +189,42 @@ double isingLattice::siteEnergy3D(int x, double k) const{
 void isingLattice::metropolis3DimSweep(double beta, double k=0.0){
     double ide;
     for(int i=0; i<N; ++i){
-        int x = lDist(*mt19937Engine);
+        int x = freeSites[lDist(*mt19937Engine)];
         ide = -siteEnergy3D(x, k);
-        if (ide <=0 || rDist(*mt19937Engine) < exp(beta*ide)){
+        if (ide <=0 || rDist(*mt19937Engine) < exp(-2*beta*ide)){
             lattice[x] = -lattice[x];
         }
+    }
+}
+
+void isingLattice::metropolis3DimSweepTyp(double beta, double k=0.0){
+    double ide;
+    for(auto &x : freeSites){
+        ide = -siteEnergy3D(x, k);
+        if (ide <=0 || rDist(*mt19937Engine) < exp(-2*beta*ide)){
+            lattice[x] = -lattice[x];
+        }
+    }
+}
+
+
+void isingLattice::metropolis3DimStep(double beta, double k=0.0, int steps=1){
+    double ide;
+    for(int i=0; i<steps; ++i){
+        int x = freeSites[lDist(*mt19937Engine)];
+        ide = -siteEnergy3D(x, k);
+        if (ide <=0 || rDist(*mt19937Engine) < exp(-2*beta*ide)){
+            lattice[x] = -lattice[x];
+        }
+    }
+}
+
+void isingLattice::metropolis3DimZeroTempSweep(double k=0.0){
+    double ide;
+    for(auto &x : freeSites){
+        ide = -siteEnergy3D(x, k);
+        if (ide < 0)
+            lattice[x] = -lattice[x];
     }
 }
 
@@ -194,7 +268,7 @@ class isingLattice2D{
         std::uniform_int_distribution<> lDist;
         std::uniform_real_distribution<> rDist;
         std::mt19937 *mt19937Engine;
-        void neighboutList(void){
+        void genNeighbours(void){
             for (int i = 0; i < N; ++i)
             {
                 nn[4*i+0] = (mod(i,L)==0) ?  i+L-1 : i-1;
@@ -216,7 +290,7 @@ class isingLattice2D{
             lattice = new int[N];
             nn = new int[4*N];
             nnn = new int[4*N];
-            neighboutList();
+            genNeighbours();
         };
 
         void initialise(double m0){

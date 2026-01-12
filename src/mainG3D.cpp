@@ -1,5 +1,4 @@
 
-#include <omp.h>
 #include "isingGonihedric.h"
 #include "randutils.hpp"
 #include <iostream>
@@ -13,17 +12,6 @@ int main(int argc, char **argv){
         // To do: write help
     }
 
-    int totalSteps;
-    const std::string &tstring = input.getCmdOption("-t");
-    if (!tstring.empty()){
-        totalSteps = std::stoi(tstring);
-    }else{
-        std::cerr << "Error: no. of trials not specified\n";
-        exit(0);
-    }
-    // std::cout << "no. of trials t = " << t << "\n";
-
-
     int L;
     const std::string &lstring = input.getCmdOption("-L");
     if (!lstring.empty()){
@@ -32,29 +20,32 @@ int main(int argc, char **argv){
         std::cerr << "Error: L not specified\n";
         exit(0);
     }
-    // std::cout << "L = " << L << "\n";
-    std::ofstream config("lattice");
-    std::ofstream data("data");
+    std::cout << "L = " << L << "\n";
+
+    double k;
+    const std::string &kstring = input.getCmdOption("-k");
+    if (!kstring.empty()){
+        k = std::stod(kstring);
+    }else{
+        std::cerr << "Error: k not specified\n";
+        exit(0);
+    }
+    std::cout << "k = " << k << "\n";
+
+    std::ofstream data("dataL"+std::to_string(L)+"k"+std::to_string(k));
     data.setf(std::ios::fixed);
     data.precision(5);
-
-    std::uniform_real_distribution<> kDist(-3.0, 3.0);
-    std::uniform_real_distribution<> TDist(-3.0, 3.0);
-
-    // alt seed 328575958954136219
+    // alt seed 328575958951598690
     static uint64_t seed1;
     const std::string &seedstring = input.getCmdOption("-s");
     if (!seedstring.empty()){
         seed1 = std::stoull(seedstring);
     }else{
-        seed1 = 328575958951598690;
+        seed1 = 328575958954136219;
     }
-    // std::cout << "seed = " << seed << "\n";
 
-    omp_set_num_threads(6);
+    omp_set_num_threads(10);
     omp_set_dynamic(0);
-    double k, T, T0, beta;
-
     randutils::seed_seq_fe128 seeder{uint32_t(seed1),uint32_t(seed1 >> 32)};
     std::vector<std::uint32_t> thread_seeds(omp_get_max_threads());
     seeder.generate(thread_seeds.begin(), thread_seeds.end());
@@ -74,32 +65,28 @@ int main(int argc, char **argv){
     lattice = new isingLattice(L, mt19937Engine);
 }
 
-#pragma omp parallel for private(k, T, T0, beta) schedule(dynamic)
-    for (int i = 0; i < totalSteps; i++)
-    {
-#pragma omp critical
-{
-        k = kDist(*mt19937Engine); T = TDist(*mt19937Engine);
-}
-        T0 = 5.0;
-        lattice->initialise(0.5);
-        while(T < T0){
-            beta = 1.0/T0;
-            lattice->metropolis3DimSweep(beta, k);
-            T0 -= 0.0002;
-        }
-        beta = 1.0/T;
+#pragma omp parallel for schedule(dynamic)
+    for (int i = 0; i < 1000; i++){
+        double beta = 0.0;
+        while(beta > 1.05){
+            lattice->initialise(0.5);
 
-        for (int k = 0; k < 3000; k++)
-        {
-            lattice->metropolis3DimSweep(beta, k);
-        }
+            for (size_t i = 0; i < 10000; i++)
+                lattice->metropolis3DimSweep(beta, k);
+            
+            for (int j = 0; j < 1000; j++){
+                lattice->metropolis3DimSweep(beta, k);
 
 #pragma omp critical
-{
-        lattice->writeConfig(config);
-        data << std::showpos << k << " " << std::showpos << T << "\n";
-}
+            lattice->writeConfig(data);
+            
+            }
+            beta+=.05;
+        }
     }
+
+#pragma omp parallel
+    delete lattice;
+
     return 0;
 }

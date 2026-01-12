@@ -39,7 +39,7 @@ int main(int argc, char **argv){
     data.precision(5);
 
     std::uniform_real_distribution<> kDist(-3.0, 3.0);
-    std::uniform_real_distribution<> TDist(-3.0, 3.0);
+    std::uniform_real_distribution<> TDist(0, 3.0);
 
     // alt seed 328575958954136219
     static uint64_t seed1;
@@ -90,7 +90,7 @@ int main(int argc, char **argv){
         }
         beta = 1.0/T;
 
-        for (int k = 0; k < 3000; k++)
+        for (int j = 0; j < 3000; j++)
         {
             lattice->metropolis2DimSweep(beta, k);
         }

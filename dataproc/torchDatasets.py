@@ -107,3 +107,34 @@ class CustomAutoencoderDataset(T.utils.data.Dataset):
             if self.target_transform:
                 label = self.target_transform(label)
             return (config, label)
+        
+class CustomAutoencoderDataset3D(T.utils.data.Dataset):
+    def __init__(self, dataFile:str, side:int, transform=None, target_transform=None):
+        self.file = dataFile;
+        self.length = lineNumber(self.file+"data")
+        self.side = side
+        self.side3 = side*side*side
+
+        # seekSkip is the number of characters to skip to reach the next line
+        self.dataSeekSkip = 17+1
+
+        self.configSeekSkip = self.side3+1 # config+1x\n
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+        with open(self.file + "lattice", 'r') as configs, open(self.file + "data", 'r') as labels:
+            if idx >= self.length:
+                raise IndexError
+            configs.seek(idx*self.configSeekSkip, os.SEEK_SET)
+            labels.seek(idx*self.dataSeekSkip, os.SEEK_SET)
+            label = T.tensor(np.fromstring(labels.readline().strip(), dtype=float, sep=" "), dtype=T.float)
+            config = T.tensor(np.array(list(configs.readline().strip()), dtype=int)).type(T.float)
+            if self.transform:
+                config = self.transform(config)
+            if self.target_transform:
+                label = self.target_transform(label)
+            return (config, label)
