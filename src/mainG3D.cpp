@@ -31,10 +31,16 @@ int main(int argc, char **argv){
         exit(0);
     }
     std::cout << "k = " << k << "\n";
+    // std::string kstring2 = std::format("{}",std::to_string(k));
 
-    std::ofstream data("dataL"+std::to_string(L)+"k"+std::to_string(k));
-    data.setf(std::ios::fixed);
-    data.precision(5);
+    std::ofstream data("testL"+std::to_string(L)+"k"+kstring+"configs");
+    std::ofstream temps("testL"+std::to_string(L)+"k"+kstring+"temps");
+
+    // std::ofstream data("testL"+std::to_string(L)+"configs");
+    // std::ofstream temps("testL"+std::to_string(L)+"params");
+
+    temps.setf(std::ios::fixed);
+    temps.precision(4);
     // alt seed 328575958951598690
     static uint64_t seed1;
     const std::string &seedstring = input.getCmdOption("-s");
@@ -68,20 +74,17 @@ int main(int argc, char **argv){
 #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < 1000; i++){
         double beta = 0.0;
-        while(beta > 1.05){
-            lattice->initialise(0.5);
-
+        lattice->initialise(0.5);
+        while(beta < 1.1){
             for (size_t i = 0; i < 10000; i++)
-                lattice->metropolis3DimSweep(beta, k);
-            
-            for (int j = 0; j < 1000; j++){
                 lattice->metropolis3DimSweep(beta, k);
 
 #pragma omp critical
-            lattice->writeConfig(data);
-            
-            }
-            beta+=.05;
+                {
+                    lattice->writeConfig(data);
+                    temps << beta << "\n";
+                }
+            beta += 0.1;
         }
     }
 

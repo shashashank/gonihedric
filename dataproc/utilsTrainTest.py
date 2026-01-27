@@ -20,10 +20,10 @@ class ReshapeTransform:
     def __call__(self, x):
         return x.view(*self.shape)
 
-def visualize_reconstruction(model, device, data_loader, side, location, name:str="reconstruction"):
+def visualize_reconstruction(model, device, data_loader, side1, side2, location="", name:str="reconstruction"):
     model.eval()
     with torch.no_grad():
-        images, _ = next(iter(data_loader))
+        images = next(iter(data_loader))
         images = images.to(device)
         reconstructed = model(images)
 
@@ -31,15 +31,18 @@ def visualize_reconstruction(model, device, data_loader, side, location, name:st
         fig, axes = plt.subplots(2, 8, figsize=(15, 4))
         for i in range(8):
             # Original images
-            axes[0,i].imshow(images[i].cpu().numpy().squeeze().reshape(side, side), cmap='gray')
+            axes[0,i].imshow(images[i].cpu().numpy().squeeze().reshape(side1, side2), cmap='gray')
             axes[0,i].axis('off')
 
             # Reconstructed images
-            axes[1,i].imshow(reconstructed[i].cpu().numpy().squeeze().reshape(side, side), cmap='gray')
+            axes[1,i].imshow(reconstructed[i].cpu().numpy().squeeze().reshape(side1, side2), cmap='gray')
             axes[1,i].axis('off')
 
         plt.tight_layout()
-        plt.savefig(location+"/"+name+".png")
+        if location != "":
+            plt.savefig(location+"/"+name+".png")
+        else:
+            plt.show()
         plt.close()
 
 def visualize_dataset(dataDir:str, side:int):
@@ -55,6 +58,18 @@ def visualize_dataset(dataDir:str, side:int):
     plt.show()
     plt.close()
 
+def visualize_dataset3D(dataDir:str, side1:int, side2:int):
+    transform = ReshapeTransform(([1, side1,side2]))
+    dataset = ds.CustomAutoencoderDataset3D(dataDir, int(np.cbrt(side1*side2)), transform)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=10, shuffle=True)
+    images, _ = next(iter(dataloader))
+    fig, axes = plt.subplots(1, 10, figsize=(15, 4))
+    for i in range(10):
+        axes[i].imshow(images[i].numpy().squeeze().reshape(side1, side2), cmap='gray')
+        axes[i].axis('off')
+    plt.tight_layout()
+    plt.show()
+    plt.close()
 
 def plotLosses(trainArr, testArr, epochs, minX, maxX, folder:str=None):
     # Plotting the training and test losses
@@ -77,8 +92,9 @@ def plotLosses(trainArr, testArr, epochs, minX, maxX, folder:str=None):
     plt.close()
 
 
-def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side, lam:float, folder:str, number:int, num_epochs=10, saving=False):
+def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, side1, side2, lam:float, folder:str, number:int, num_epochs=10, saving=False):
     # Create the folder
+    side = int(np.cbrt(side1*side2))
     folder_name = folder + '/' + str(number) +'/'
     os.makedirs(folder_name, exist_ok=True)
 
@@ -93,10 +109,9 @@ def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, s
         model.train()
         # Iterate over data.
         total_loss = 0
-        for batch_idx, (images, _) in enumerate(trainLoader):
+        for batch_idx, images in enumerate(trainLoader):
             # Move images to device
             images = images.to(device)
-
             # Forward pass
             outputs = model(images)
             loss = criterion(outputs, images) + lam * contractive_loss(model.encoder, images)
@@ -111,7 +126,7 @@ def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, s
         model.eval()
         with torch.no_grad():
             total_loss = 0
-            for batch_idx, (images, _) in enumerate(testLoader):
+            for batch_idx, images in enumerate(testLoader):
                 images = images.to(device)
                 outputs = model(images)
                 loss = criterion(outputs, images).cpu().numpy()
@@ -120,11 +135,11 @@ def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, s
             if testLosses[epoch] < minTestLoss:
                 minTestLoss = testLosses[epoch]
                 torch.save(model.state_dict(), folder_name+f"/best_model.pth")
-                # visualize_reconstruction(model, device, testLoader, side, folder_name, name="best_test")
+                visualize_reconstruction(model, device, testLoader, side1, side2, folder_name, name="best_test")
             if trainLosses[epoch] < minTrainLoss:
                 minTrainLoss = trainLosses[epoch]
                 torch.save(model.state_dict(), folder_name+f"/best_train_model.pth")
-                # visualize_reconstruction(model, device, trainLoader, side, folder_name, name="best_train")
+                visualize_reconstruction(model, device, trainLoader, side1, side2, folder_name, name="best_train")
         if epoch % 10 == 0 and saving:
             torch.save(model.state_dict(), folder_name+f"/model_epoch_{epoch}.pth")
     np.save(folder_name + "trainLosses.npy", trainLosses)
