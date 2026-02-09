@@ -45,6 +45,44 @@ def visualize_reconstruction(model, device, data_loader, side1, side2, location=
             plt.show()
         plt.close()
 
+def visualize_reconstructionG3D(model, device, data_loader, side, location="", name:str="reconstruction"):
+    model.eval()
+    with torch.no_grad():
+        (images,labels) = next(iter(data_loader))
+        images = images.to(device)
+        reconstructed = model(images)
+
+        # Plot original vs reconstructed images
+        fig, axes = plt.subplots(2, 6, figsize=(12, 4))
+        for i in range(2):
+            # Original images
+            ogImg = images[i].cpu().numpy().squeeze().reshape(side, side, side)
+
+            axes[0,i*3].imshow(ogImg[side//2,:,:], cmap='gray')
+            axes[0,3*i].axis('off')
+
+            axes[0,3*i+1].imshow(ogImg[:,side//2,:], cmap='gray')
+            axes[0,3*i+1].axis('off')
+
+            axes[0,3*i+2].imshow(ogImg[:,:,side//2], cmap='gray')
+            axes[0,3*i+2].axis('off')
+
+            # Reconstructed images
+            recImg = reconstructed[i].cpu().numpy().squeeze().reshape(side, side, side)
+            axes[1,3*i].imshow(recImg[side//2,:,:], cmap='gray')
+            axes[1,3*i].axis('off')
+            axes[1,3*i+1].imshow(recImg[:,side//2,:], cmap='gray')
+            axes[1,3*i+1].axis('off')
+            axes[1,3*i+2].imshow(recImg[:,:,side//2], cmap='gray')
+            axes[1,3*i+2].axis('off')
+        plt.tight_layout()
+        if location != "":
+            plt.savefig(location+"/"+name+".png")
+        else:
+            plt.show()
+        plt.close()
+
+
 def visualize_dataset(dataDir:str, side:int):
     transform = ReshapeTransform(([1, side,side]))
     dataset = ds.CustomAutoencoderDataset(dataDir, side, transform)
@@ -140,6 +178,59 @@ def trainAndTest(model, device, trainLoader, testLoader, criterion, optimizer, s
                 minTrainLoss = trainLosses[epoch]
                 torch.save(model.state_dict(), folder_name+f"/best_train_model.pth")
                 visualize_reconstruction(model, device, trainLoader, side1, side2, folder_name, name="best_train")
+        if epoch % 10 == 0 and saving:
+            torch.save(model.state_dict(), folder_name+f"/model_epoch_{epoch}.pth")
+    np.save(folder_name + "trainLosses.npy", trainLosses)
+    np.save(folder_name + "testLosses.npy", testLosses)
+    plotLosses(trainLosses, testLosses, num_epochs, 0, num_epochs-1, folder=folder_name)
+
+def trainAndTestLabel(model, device, trainLoader, testLoader, criterion, optimizer, side, lam:float, folder:str, number:int, num_epochs=10, saving=False):
+    # Create the folder
+    folder_name = folder + '/' + str(number) +'/'
+    os.makedirs(folder_name, exist_ok=True)
+
+    if lam > 0:
+        contractive_loss = lambda enc, imag : torch.norm(torch.autograd.functional.jacobian(enc, imag, create_graph=True))
+    else:
+        contractive_loss = lambda enc, imag : 0
+    
+    trainLosses = np.empty(num_epochs); minTrainLoss = np.inf
+    testLosses = np.empty(num_epochs); minTestLoss = np.inf
+    for epoch in range(num_epochs):
+        model.train()
+        # Iterate over data.
+        total_loss = 0
+        for (images, _) in trainLoader:
+            # Move images to device
+            images = images.to(device)
+            # Forward pass
+            outputs = model(images)
+            loss = criterion(outputs, images) + lam * contractive_loss(model.encoder, images)
+
+            # Backward pass and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+        trainLosses[epoch] = total_loss / len(trainLoader)
+        model.eval()
+        with torch.no_grad():
+            total_loss = 0
+            for (images, _) in testLoader:
+                images = images.to(device)
+                outputs = model(images)
+                loss = criterion(outputs, images).cpu().numpy()
+                total_loss += loss
+            testLosses[epoch] = total_loss / len(testLoader)
+            if testLosses[epoch] < minTestLoss:
+                minTestLoss = testLosses[epoch]
+                torch.save(model.state_dict(), folder_name+f"/best_model.pth")
+                visualize_reconstructionG3D(model, device, testLoader, side, folder_name, name="best_test")
+            if trainLosses[epoch] < minTrainLoss:
+                minTrainLoss = trainLosses[epoch]
+                torch.save(model.state_dict(), folder_name+f"/best_train_model.pth")
+                visualize_reconstructionG3D(model, device, trainLoader, side, folder_name, name="best_train")
         if epoch % 10 == 0 and saving:
             torch.save(model.state_dict(), folder_name+f"/model_epoch_{epoch}.pth")
     np.save(folder_name + "trainLosses.npy", trainLosses)

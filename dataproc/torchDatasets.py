@@ -114,7 +114,7 @@ class CustomAutoencoderDataset3D(T.utils.data.Dataset):
 
         self.string = "temps"
                 # seekSkip is the number of characters to skip to reach the next line
-        self.dataSeekSkip = 7+1
+        self.dataSeekSkip = 6+1 #7+1 also
 
         if os.path.isfile(self.file+"temps")==False:
             self.string = "params"
@@ -124,7 +124,7 @@ class CustomAutoencoderDataset3D(T.utils.data.Dataset):
         self.side = side
         self.side3 = side*side*side
 
-        self.configSeekSkip = self.side3+1 # config+1x\n
+        self.configSeekSkip = self.side3+1 # config+\n
         self.transform = transform
         self.target_transform = target_transform
 

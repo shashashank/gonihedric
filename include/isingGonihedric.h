@@ -73,12 +73,15 @@ class isingLattice{
 
         void fixPlanesOfSites(int, int, int);
         void metropolis3DimSweep(double, double);
+        void metro3DIsingSweep(double);
+        void metro3DIsingTyp(double);
         void metropolis3DimSweepTyp(double, double);
         void metropolis3DimStep(double, double, int);
         void metropolis3DimZeroTempSweep(double);
         double magnetisation(void) const;
         double energy3D(double) const;
         double siteEnergy3D(int, double) const;
+        double siteEnergyAlt(int) const;
         void writeConfig(std::ostream &data) const;
         void printConfig(std::ostream &data) const;
         void flipSeriesOfSites(int, int);
@@ -184,6 +187,33 @@ double isingLattice::siteEnergy3D(int x, double k) const{
                         + lattice[nn[6*x+3]]*lattice[nn[6*x+5]]*lattice[nnn[12*x+8]]
                         + lattice[nn[6*x+2]]*lattice[nn[6*x+5]]*lattice[nnn[12*x+9]]);
     return energy*lattice[x];
+}
+
+double isingLattice::siteEnergyAlt(int x) const{
+    double energy;
+    energy = lattice[nn[6*x+0]] +lattice[nn[6*x+1]] +lattice[nn[6*x+2]] 
+            +lattice[nn[6*x+3]] +lattice[nn[6*x+4]] +lattice[nn[6*x+5]];
+    return energy*lattice[x];
+}
+
+void isingLattice::metro3DIsingSweep(double beta){
+    double ide;
+    for(int i=0; i<N; ++i){
+        int x = lDist(*mt19937Engine);
+        ide = siteEnergyAlt(x);
+        if (ide <=0 || rDist(*mt19937Engine) < exp(-beta*ide)){
+            lattice[x] = -lattice[x];
+        }
+    }
+}
+void isingLattice::metro3DIsingTyp(double beta){
+    double ide;
+    for(auto &x : freeSites){
+        ide = siteEnergyAlt(x);
+        if (ide <=0 || rDist(*mt19937Engine) < exp(-beta*ide)){
+            lattice[x] = -lattice[x];
+        }
+    }
 }
 
 void isingLattice::metropolis3DimSweep(double beta, double k=0.0){
