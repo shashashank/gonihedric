@@ -1,5 +1,4 @@
 
-#include <omp.h>
 #include "isingGonihedric.h"
 #include "randutils.hpp"
 #include <iostream>
@@ -21,6 +20,7 @@ int main(int argc, char **argv){
         std::cerr << "Error: L not specified\n";
         exit(0);
     }
+    std::cout << "L = " << L << "\n";
 
     std::string label;
     const std::string &labelstring = input.getCmdOption("-lbl");
@@ -47,29 +47,55 @@ int main(int argc, char **argv){
     // std::cout << "seed = " << seed << "\n";
 
     randutils::seed_seq_fe128 seeder{uint32_t(seed1),uint32_t(seed1 >> 32)};
-    std::mt19937 mt19937Engine(seeder);
-    isingLattice lattice(L, &mt19937Engine);
+    std::vector<std::uint32_t> thread_seeds(omp_get_max_threads());
+    seeder.generate(thread_seeds.begin(), thread_seeds.end());
+    std::vector<std::mt19937> mt19937Engines(omp_get_max_threads());
+    for (int i = 0; i < omp_get_max_threads(); ++i)
+    {
+        mt19937Engines[i] = std::mt19937(thread_seeds[i]);
+    }
 
+    static std::mt19937 *mt19937Engine;
+    static isingLattice *lattice;
+#pragma omp threadprivate(mt19937Engine, lattice)
+
+#pragma omp parallel
+{
+    mt19937Engine = &mt19937Engines[omp_get_thread_num()];
+    lattice = new isingLattice(L, mt19937Engine);
+}
     double tempDelta = 0.8/(114-1),
     tStart = 2/(std::log(1+std::sqrt(2))) + 0.4, 
     tEnd = 2/(std::log(1+std::sqrt(2))) - 0.4;
     int tau = std::ceil(std::pow(L, 1.4));
-    double T = tStart;
-    lattice.initialise(0.5);
-    while(T > tEnd){
-        for (int k = 0; k < 10*tau; k++){
-                lattice.metro3DIsingSweep(1/T);
-                lattice.metro3DIsingTyp(1/T);
-        }
-        for (size_t j = 0; j < 1500; j++){
-            for (int k = 0; k < tau; k++){
-                lattice.metro3DIsingSweep(1/T);
-                lattice.metro3DIsingTyp(1/T);
+        
+#pragma omp parallel for schedule(dynamic)
+    for (int i = 0; i < 10; i++)
+    {
+        double T = tStart;
+        lattice->initialise(0.5);
+        while(T >= tEnd){
+            for (int k = 0; k < 10*tau; k++){
+                    lattice->metro3DIsingSweep(1/T);
+                    lattice->metro3DIsingTyp(1/T);
             }
-            lattice.writeConfig(config);
-            data << T << "\n";
-        }
-        T -= tempDelta;
+            for (size_t j = 0; j < 100; j++){
+                for (int k = 0; k < tau; k++){
+                    lattice->metro3DIsingSweep(1/T);
+                    lattice->metro3DIsingTyp(1/T);
+                }
+#pragma omp critical
+                {
+                    lattice->writeConfig(config);
+                    data << T << "\n";
+                }
+            }
+            T -= tempDelta;
+        }   
     }
+
+#pragma omp parallel
+    delete lattice;
+    
     return 0;
 }

@@ -85,6 +85,7 @@ class isingLattice{
         void writeConfig(std::ostream &data) const;
         void printConfig(std::ostream &data) const;
         void flipSeriesOfSites(int, int);
+        void flipPlanes(int, int, int);
         ~isingLattice() {
             delete[] lattice;
             delete[] nn;
@@ -171,9 +172,12 @@ double isingLattice::siteEnergy3D(int x, double k) const{
     double energy;
     energy = -2.0*k*(lattice[nn[6*x+0]] +lattice[nn[6*x+1]] +lattice[nn[6*x+2]] 
                     + lattice[nn[6*x+3]] +lattice[nn[6*x+4]] +lattice[nn[6*x+5]]);
-    energy += k/2.0*(lattice[nnn[12*x+0]] + lattice[nnn[12*x+1]] + lattice[nnn[12*x+2]] + lattice[nnn[12*x+3]]
-                    + lattice[nnn[12*x+4]] + lattice[nnn[12*x+5]] + lattice[nnn[12*x+6]] + lattice[nnn[12*x+7]]
-                    + lattice[nnn[12*x+8]] + lattice[nnn[12*x+9]] + lattice[nnn[12*x+10]] + lattice[nnn[12*x+11]]);
+    energy += k/2.0*(lattice[nnn[12*x+0]] + lattice[nnn[12*x+1]]
+                    + lattice[nnn[12*x+2]] + lattice[nnn[12*x+3]]
+                    + lattice[nnn[12*x+4]] + lattice[nnn[12*x+5]]
+                    + lattice[nnn[12*x+6]] + lattice[nnn[12*x+7]]
+                    + lattice[nnn[12*x+8]] + lattice[nnn[12*x+9]]
+                    + lattice[nnn[12*x+10]] + lattice[nnn[12*x+11]]);
     energy += -(1.0-k)/2.0*(lattice[nn[6*x+0]]*lattice[nn[6*x+2]]*lattice[nnn[12*x+0]]
                         + lattice[nn[6*x+1]]*lattice[nn[6*x+2]]*lattice[nnn[12*x+1]]
                         + lattice[nn[6*x+0]]*lattice[nn[6*x+3]]*lattice[nnn[12*x+2]]
@@ -288,6 +292,15 @@ void isingLattice::flipSeriesOfSites(int x, int d){
 
 }
 
+void isingLattice::flipPlanes(int i, int j, int k){
+    for (int x = 0; x < L; ++x){
+        for (int y = 0; y < L; ++y){
+            lattice[i*L2 + x*L + y] *= -1;
+            lattice[x*L2 + j*L + y] *= -1;
+            lattice[x*L2 + y*L + k] *= -1;
+        }
+    }
+}
 
 
 class isingLattice2D{
