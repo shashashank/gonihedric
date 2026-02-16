@@ -22,6 +22,16 @@ int main(int argc, char **argv){
     }
     std::cout << "L = " << L << "\n";
 
+    int t;
+    const std::string &tstring = input.getCmdOption("-t");
+    if (!tstring.empty()){
+        t = std::stoi(tstring);
+    }else{
+        std::cerr << "Error: t not specified\n";
+        exit(0);
+    }
+    std::cout << "t = " << t << "\n";
+
     std::string label;
     const std::string &labelstring = input.getCmdOption("-lbl");
     if (!labelstring.empty()){
@@ -64,11 +74,11 @@ int main(int argc, char **argv){
     mt19937Engine = &mt19937Engines[omp_get_thread_num()];
     lattice = new isingLattice(L, mt19937Engine);
 }
-    double tempDelta = 0.8/(114-1),
+    double tempDelta = 0.8/(t-1),
     tStart = 2/(std::log(1+std::sqrt(2))) + 0.4, 
     tEnd = 2/(std::log(1+std::sqrt(2))) - 0.4;
     int tau = std::ceil(std::pow(L, 1.4));
-        
+
 #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < 10; i++)
     {
