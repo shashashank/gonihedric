@@ -116,6 +116,19 @@ os.makedirs(folder_name+'/', exist_ok=True)
 
 source_path = Path(__file__).resolve()
 
+# write configurations to a text file
+with open(folder_name+'/config.txt', 'w') as f:
+    f.write(f"Model: ConvAutoencoder\n")
+    f.write(f"Channel Multiplier: 16\n")
+    f.write(f"Dropout: 0.14404089356326266\n")
+    f.write(f"Optimizer: Adam\n")
+    f.write(f"Learning Rate: 0.002065691663432126\n")
+    f.write(f"Weight Decay: 0.00016894053078186604\n")
+    f.write(f"Batch Size: {batchSize}\n")
+    # f.write(f"Epochs: {epochs}\n")
+    f.write(f"Seed: {seed}\n")
+    f.write(f"Side Length: {side}\n")
+
 # Copy File
 shutil.copy(source_path, folder_name+'/'+source_path.name)
 # wd=0.0011; lam=0.0046

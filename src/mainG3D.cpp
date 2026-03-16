@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <omp.h>
 
 int main(int argc, char **argv){
     InputParser input(argc, argv);
@@ -50,46 +49,30 @@ int main(int argc, char **argv){
         seed1 = 328575958954136219;
     }
 
-    omp_set_num_threads(10);
-    omp_set_dynamic(0);
     randutils::seed_seq_fe128 seeder{uint32_t(seed1),uint32_t(seed1 >> 32)};
-    std::vector<std::uint32_t> thread_seeds(omp_get_max_threads());
-    seeder.generate(thread_seeds.begin(), thread_seeds.end());
-    std::vector<std::mt19937> mt19937Engines(omp_get_max_threads());
-    for (int i = 0; i < omp_get_max_threads(); ++i)
-    {
-        mt19937Engines[i] = std::mt19937(thread_seeds[i]);
-    }
+    std::mt19937 mt19937Engine(seeder);
+    isingLattice lattice(L, &mt19937Engine);
+    double tempDelta = 0.8/(114-1),
+    tStart = 2/(std::log(1+std::sqrt(2))) + 0.4, 
+    tEnd = 2/(std::log(1+std::sqrt(2))) - 0.4;
+    int tau = std::ceil(std::pow(L, 1.4));
+    double T = tStart;
+    lattice.initialise(0.5);
 
-    static std::mt19937 *mt19937Engine;
-    static isingLattice *lattice;
-#pragma omp threadprivate(mt19937Engine, lattice)
-
-#pragma omp parallel
-{
-    mt19937Engine = &mt19937Engines[omp_get_thread_num()];
-    lattice = new isingLattice(L, mt19937Engine);
-}
-
-#pragma omp parallel for schedule(dynamic)
-    for (int i = 0; i < 1000; i++){
-        double beta = 0.0;
-        lattice->initialise(0.5);
-        while(beta < 1.1){
-            for (size_t i = 0; i < 10000; i++)
-                lattice->metropolis3DimSweep(beta, k);
-
-#pragma omp critical
-                {
-                    lattice->writeConfig(data);
-                    temps << beta << "\n";
-                }
-            beta += 0.1;
+    while(T > tEnd){
+        for (int k = 0; k < 10*tau; k++){
+                lattice.metropolis3DimSweep(1/T);
+                lattice.metropolis3DimSweepTyp(1/T);
         }
+        for (size_t j = 0; j < 1500; j++){
+            for (int k = 0; k < tau; k++){
+                lattice.metropolis3DimSweep(1/T);
+                lattice.metropolis3DimSweepTyp(1/T);
+            }
+            lattice.writeConfig(data);
+            data << T << "\n";
+        }
+        T -= tempDelta;
     }
-
-#pragma omp parallel
-    delete lattice;
-
     return 0;
 }
