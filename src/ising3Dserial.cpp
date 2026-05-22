@@ -54,7 +54,7 @@ int main(int argc, char **argv){
     tEnd = 2/(std::log(1+std::sqrt(2))) - 0.4;
     int tau = std::ceil(std::pow(L, 1.4));
     double T = tStart;
-    lattice.initialise(0.5);
+    lattice.initialise(0.0);
     while(T > tEnd){
         for (int k = 0; k < 10*tau; k++){
                 lattice.metro3DIsingSweep(1/T);

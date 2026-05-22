@@ -55,12 +55,12 @@ int main(int argc, char **argv){
     double tempDelta = 0.8/(114-1),
     tStart = 2/(std::log(1+std::sqrt(2))) + 0.4, 
     tEnd = 2/(std::log(1+std::sqrt(2))) - 0.4;
-    int tau = std::ceil(std::pow(L, 1.4));
+    int tau = std::ceil(std::pow(L, 2));
     double T = tStart;
-    lattice.initialise(0.5);
+    lattice.initialise(0.0);
 
     while(T > tEnd){
-        for (int k = 0; k < 10*tau; k++){
+        for (int k = 0; k < 15*tau; k++){
                 lattice.metropolis3DimSweep(1/T);
                 lattice.metropolis3DimSweepTyp(1/T);
         }

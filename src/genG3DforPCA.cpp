@@ -75,7 +75,7 @@ int main(int argc, char **argv){
 #pragma omp parallel for schedule(dynamic)
     for (int i = 0; i < 10000; i++){
         double beta0 = 0.0, k, beta;
-        lattice->initialise(0.5);
+        lattice->initialise(0.0);
 #pragma omp critical
 {
         k = realDist(*mt19937Engine);

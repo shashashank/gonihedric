@@ -83,7 +83,7 @@ int main(int argc, char **argv){
     for (int i = 0; i < 10; i++)
     {
         double T = tStart;
-        lattice->initialise(0.5);
+        lattice->initialise(0.0);
         while(T >= tEnd){
             for (int k = 0; k < 10*tau; k++){
                     lattice->metro3DIsingSweep(1/T);

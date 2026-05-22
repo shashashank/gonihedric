@@ -61,14 +61,21 @@ class isingLattice{
         };
 
         void initialise(double m0){
+            // for(int i=0; i<N; ++i)
+            //     lattice[i] = (rDist(*mt19937Engine) < m0)? 1 : -1;
             for(int i=0; i<N; ++i)
-                lattice[i] = (rDist(*mt19937Engine) < m0)? 1 : -1;
-            
+                lattice[i] = (rDist(*mt19937Engine) < (1.0+m0)/2.0)? 1 : -1;
+
             freeSites.clear();
             for (int idx = 0; idx < N; ++idx){
                 freeSites.push_back(idx);
             // std::random_shuffle(freeSites.begin(), freeSites.end());
             }
+        }
+
+        int spin(int x, int y, int z) const{
+            int index = (x*L2 + y*L + z) % N;
+            return lattice[index];
         }
 
         void fixPlanesOfSites(int, int, int);
@@ -79,6 +86,9 @@ class isingLattice{
         void metropolis3DimStep(double, double, int);
         void metropolis3DimZeroTempSweep(double);
         double magnetisation(void) const;
+        void magFukiNukeX(double &abs, double &sqr) const;
+        void magFukiNukeY(double &abs, double &sqr) const;
+        void magFukiNukeZ(double &abs, double &sqr) const;
         double energy3D(double) const;
         double siteEnergy3D(int, double) const;
         double siteEnergyAlt(int) const;
@@ -166,6 +176,46 @@ double isingLattice::magnetisation(void) const{
     double m=0.0;
     for (int i = 0; i < N; ++i) m += lattice[i];
     return m/N;
+}
+
+void isingLattice::magFukiNukeX(double &abs, double &sqr) const{
+    abs = 0.0; sqr = 0.0;
+    for (int x = 0; x < L; ++x){
+        double tmp = 0.0;
+        for (int y = 0; y < L; ++y)
+            for (int z = 0; z < L; ++z)
+                tmp += spin(x, y, z) * spin(x+1, y, z);
+        abs += std::abs(tmp);
+        sqr += tmp * tmp;
+    }
+    abs = abs/(L*L*L); sqr = sqr/(L*L*L*L*L);
+}
+
+void isingLattice::magFukiNukeY(double &abs, double &sqr) const{
+    abs = 0.0; sqr = 0.0;
+    for (int y = 0; y < L; ++y){
+        double tmp = 0.0;
+        for (int z = 0; z < L; ++z)
+            for (int x = 0; x < L; ++x)
+                tmp += spin(x, y, z) * spin(x, y+1, z);
+        abs += std::abs(tmp);
+        sqr += tmp * tmp;
+    }
+    abs = abs/(L*L*L); sqr = sqr/(L*L*L*L*L);
+}
+
+void isingLattice::magFukiNukeZ(double &abs, double &sqr) const{
+    abs = 0.0; sqr = 0.0;
+    for (int z = 0; z < L; ++z){
+        double tmp = 0.0;
+        for (int x = 0; x < L; ++x)
+            for (int y = 0; y < L; ++y)
+                tmp += spin(x, y, z) * spin(x, y, z+1);
+
+        abs += std::abs(tmp);
+        sqr += tmp * tmp;
+    }
+    abs = abs/(L*L*L); sqr = sqr/(L*L*L*L*L);
 }
 
 double isingLattice::siteEnergy3D(int x, double k) const{
@@ -295,9 +345,9 @@ void isingLattice::flipSeriesOfSites(int x, int d){
 void isingLattice::flipPlanes(int i, int j, int k){
     for (int x = 0; x < L; ++x){
         for (int y = 0; y < L; ++y){
-            lattice[i*L2 + x*L + y] *= -1;
-            lattice[x*L2 + j*L + y] *= -1;
-            lattice[x*L2 + y*L + k] *= -1;
+            lattice[i*L2 + x*L + y] *= (i!=-1) ? -1 : 1;
+            lattice[x*L2 + j*L + y] *= (j!=-1) ? -1 : 1;
+            lattice[x*L2 + y*L + k] *= (k!=-1) ? -1 : 1;
         }
     }
 }
